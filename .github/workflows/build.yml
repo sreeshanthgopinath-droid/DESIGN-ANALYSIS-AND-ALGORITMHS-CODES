@@ -20,10 +20,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
-      - run: gradle assembleDebug --stacktrace
-      - name: Save APK to a branch
+      - name: Build
         run: |
-          mkdir out && cp app/build/outputs/apk/debug/app-debug.apk out/QuizAlert.apk
-          cd out && git init -q -b quiz-alert-apk && git add . 
-          git -c user.name=ci -c user.email=ci@example.com commit -qm "APK"
+          set -o pipefail
+          gradle assembleDebug --stacktrace 2>&1 | tee build.log
+      - name: Save results to a branch
+        if: always()
+        run: |
+          mkdir out
+          cp build.log out/ || true
+          cp app/build/outputs/apk/debug/app-debug.apk out/QuizAlert.apk || true
+          cd out && git init -q -b quiz-alert-apk && git add .
+          git -c user.name=ci -c user.email=ci@example.com commit -qm "build output"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" quiz-alert-apk

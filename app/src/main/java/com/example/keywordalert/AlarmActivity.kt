@@ -82,6 +82,7 @@ class AlarmActivity : Activity() {
             )
             button("✅  Done, stop reminding me") { Alarms.done(this, r.id); finish() }
             button("😴  Snooze ${p.snoozeMin} min") { Alarms.snooze(this, r.id); finish() }
+            button("🔇  Silence now, remind me later") { Alarms.silence(this, r.id); finish() }
             button("Open Quiz Alert") {
                 startActivity(Intent(this, MainActivity::class.java))
                 finish()
