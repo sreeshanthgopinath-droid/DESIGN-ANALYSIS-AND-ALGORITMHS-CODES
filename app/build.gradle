@@ -15,21 +15,6 @@ android {
         versionName '2.0'
     }
 
-    // Fixed key so future versions install over this one.
-    signingConfigs {
-        shared {
-            storeFile file('quizalert.keystore')
-            storePassword 'quizalert'
-            keyAlias 'quizalert'
-            keyPassword 'quizalert'
-        }
-    }
-
-    buildTypes {
-        debug {
-            signingConfig signingConfigs.shared
-        }
-    }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
