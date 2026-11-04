@@ -28,6 +28,11 @@ class Prefs(context: Context) {
         get() = sp.getLong("last_collect_ms", 0L)
         set(value) = sp.edit().putLong("last_collect_ms", value).apply()
 
+    /** One line per collection run, e.g. "apps 12 · location 1 · media 340" or a failure reason. */
+    var lastCollectSummary: String
+        get() = sp.getString("last_collect_summary", "") ?: ""
+        set(value) = sp.edit().putString("last_collect_summary", value).apply()
+
     var lastSyncMs: Long
         get() = sp.getLong("last_sync_ms", 0L)
         set(value) = sp.edit().putLong("last_sync_ms", value).apply()

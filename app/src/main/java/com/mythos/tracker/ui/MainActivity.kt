@@ -26,6 +26,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -78,6 +80,13 @@ private fun TrackerScreen() {
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
+    // While the screen is open, refresh every 2 seconds so "last collection" and results update live.
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(2_000)
+            tick++
+        }
+    }
     val status = remember(tick) { Permissions.snapshot(context) }
 
     var serverUrl by remember { mutableStateOf(prefs.serverUrl) }
@@ -105,6 +114,7 @@ private fun TrackerScreen() {
 
         Text("Pending events: $pending")
         Text("Last collection: ${formatTime(prefs.lastCollectMs)}")
+        if (prefs.lastCollectSummary.isNotBlank()) Text("Found: ${prefs.lastCollectSummary}")
         Text("Last sync: ${formatTime(prefs.lastSyncMs)}")
         if (prefs.lastSyncResult.isNotBlank()) Text(prefs.lastSyncResult)
 

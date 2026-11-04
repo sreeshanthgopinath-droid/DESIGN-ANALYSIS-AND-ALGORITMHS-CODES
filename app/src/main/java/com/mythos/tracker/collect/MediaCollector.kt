@@ -11,6 +11,8 @@ import androidx.exifinterface.media.ExifInterface
 import com.mythos.tracker.Permissions
 import com.mythos.tracker.Prefs
 import com.mythos.tracker.data.EventEntity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 /**
@@ -18,33 +20,47 @@ import org.json.JSONObject
  * The media files themselves are NOT copied; only metadata is sent.
  *
  * Progress is tracked with a (date_added, _id) pair so batches never skip or repeat rows,
- * even when many files share the same timestamp.
+ * even when many files share the same timestamp. Each batch is saved before the position
+ * moves on, so a stopped run resumes where it left off without losing anything.
  */
 class MediaCollector(private val context: Context, private val prefs: Prefs) {
 
-    fun collect(): List<EventEntity> {
-        if (!Permissions.hasMedia(context)) return emptyList()
-        return collectFrom(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "photo") +
-            collectFrom(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, "video")
-    }
+    private class Batch(val events: List<EventEntity>, val lastDate: Long, val lastId: Long)
 
-    private fun collectFrom(collection: Uri, kind: String): List<EventEntity> {
-        val out = mutableListOf<EventEntity>()
-        var rounds = 0
-        while (rounds++ < MAX_ROUNDS) {
-            val read = readBatch(collection, kind, out)
-            if (read < BATCH) break // caught up
+    /** Returns the number of photos and videos found. */
+    suspend fun collect(save: suspend (List<EventEntity>) -> Unit): Int {
+        if (!Permissions.hasMedia(context)) return 0
+        return withContext(Dispatchers.IO) {
+            collectFrom(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "photo", save) +
+                collectFrom(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, "video", save)
         }
-        return out
     }
 
-    /** Reads up to BATCH rows after the saved position into [out], advances the position, returns rows read. */
-    private fun readBatch(collection: Uri, kind: String, out: MutableList<EventEntity>): Int {
+    private suspend fun collectFrom(
+        collection: Uri,
+        kind: String,
+        save: suspend (List<EventEntity>) -> Unit,
+    ): Int {
         val dateKey = "media_${kind}_date"
         val idKey = "media_${kind}_id"
-        var lastDate = prefs.watermark(dateKey)
-        var lastId = prefs.watermark(idKey)
+        var total = 0
+        var rounds = 0
 
+        while (rounds++ < MAX_ROUNDS) {
+            val batch = readBatch(collection, kind, prefs.watermark(dateKey), prefs.watermark(idKey))
+            if (batch.events.isNotEmpty()) save(batch.events)
+            // Position moves only after the batch is safely stored.
+            if (batch.events.isNotEmpty()) {
+                prefs.setWatermark(dateKey, batch.lastDate)
+                prefs.setWatermark(idKey, batch.lastId)
+            }
+            total += batch.events.size
+            if (batch.events.size < BATCH) break // caught up
+        }
+        return total
+    }
+
+    private fun readBatch(collection: Uri, kind: String, sinceDate: Long, sinceId: Long): Batch {
         val projection = arrayOf(
             MediaStore.MediaColumns._ID,
             MediaStore.MediaColumns.DATE_ADDED,
@@ -61,7 +77,7 @@ class MediaCollector(private val context: Context, private val prefs: Prefs) {
             )
             putStringArray(
                 ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
-                arrayOf(lastDate.toString(), lastDate.toString(), lastId.toString()),
+                arrayOf(sinceDate.toString(), sinceDate.toString(), sinceId.toString()),
             )
             putString(
                 ContentResolver.QUERY_ARG_SQL_SORT_ORDER,
@@ -70,10 +86,12 @@ class MediaCollector(private val context: Context, private val prefs: Prefs) {
             putInt(ContentResolver.QUERY_ARG_LIMIT, BATCH)
         }
 
-        var count = 0
+        val events = mutableListOf<EventEntity>()
+        var lastDate = sinceDate
+        var lastId = sinceId
+
         context.contentResolver.query(collection, projection, args, null)?.use { cursor ->
             while (cursor.moveToNext()) {
-                count++
                 val id = cursor.getLong(0)
                 val addedSec = cursor.getLong(1)
                 val takenMs = cursor.getLong(2)
@@ -90,7 +108,7 @@ class MediaCollector(private val context: Context, private val prefs: Prefs) {
                     readLatLng(uri)?.let { payload.put("lat", it[0]).put("lng", it[1]) }
                 }
 
-                out += EventEntity(
+                events += EventEntity(
                     kind = kind,
                     occurredAtMs = if (takenMs > 0) takenMs else addedSec * 1000,
                     sourceKey = "$kind:$id",
@@ -98,10 +116,7 @@ class MediaCollector(private val context: Context, private val prefs: Prefs) {
                 )
             }
         }
-
-        prefs.setWatermark(dateKey, lastDate)
-        prefs.setWatermark(idKey, lastId)
-        return count
+        return Batch(events, lastDate, lastId)
     }
 
     /**

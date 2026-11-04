@@ -20,6 +20,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.14.3'
+      # Keeps the same signing key between builds so a new build installs over the old one.
+      # Stored in GitHub's private build cache, not in the repository.
+      - name: Reuse signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: mythos-debug-keystore-v1
       - name: Build
         run: |
           set -o pipefail

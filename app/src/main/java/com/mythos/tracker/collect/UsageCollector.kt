@@ -14,12 +14,17 @@ import org.json.JSONObject
 class UsageCollector(context: Context, private val prefs: Prefs) {
     private val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
-    fun collect(now: Long): List<EventEntity> {
+    /**
+     * Reads new usage events, hands the finished sessions to [save], and only then moves the
+     * saved position forward, so a crash in between re-reads the data instead of losing it.
+     * Returns the number of sessions found.
+     */
+    suspend fun collect(now: Long, save: suspend (List<EventEntity>) -> Unit): Int {
         val begin = maxOf(prefs.watermark(WATERMARK), now - MAX_LOOKBACK_MS)
         val open = loadOpenSessions()
         val out = mutableListOf<EventEntity>()
 
-        val events = usm.queryEvents(begin, now) ?: return out
+        val events = usm.queryEvents(begin, now) ?: return 0
         val event = UsageEvents.Event()
         var newest = begin
 
@@ -35,9 +40,10 @@ class UsageCollector(context: Context, private val prefs: Prefs) {
             }
         }
 
+        if (out.isNotEmpty()) save(out)
         prefs.setWatermark(WATERMARK, newest)
         saveOpenSessions(open)
-        return out
+        return out.size
     }
 
     private fun session(pkg: String, start: Long, end: Long) = EventEntity(
