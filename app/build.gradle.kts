@@ -13,8 +13,8 @@ android {
         applicationId = "com.mythos.tracker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.2.1"
     }
 
     // On the cloud build the debug key comes from a saved keystore, so every build is signed

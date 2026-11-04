@@ -63,7 +63,7 @@ object Scheduler {
     fun collectNow(context: Context) {
         WorkManager.getInstance(context).enqueueUniqueWork(
             COLLECT_NOW,
-            ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.REPLACE,
             OneTimeWorkRequestBuilder<CollectWorker>().build(),
         )
     }

@@ -12,6 +12,7 @@ import com.mythos.tracker.collect.UsageCollector
 import com.mythos.tracker.data.EventEntity
 import com.mythos.tracker.data.TrackerDatabase
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Reads every enabled source into the local database. Works offline; syncing happens separately.
@@ -34,8 +35,11 @@ class CollectWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 
         val results = mutableListOf<String>()
         suspend fun step(name: String, block: suspend () -> Int) {
+            prefs.collectProgress = "Reading $name…"
             try {
-                results += "$name ${block()}"
+                // One slow source can never block the others.
+                val n = withTimeoutOrNull(STEP_TIMEOUT_MS) { block() }
+                results += if (n == null) "$name timed out (will continue next run)" else "$name $n"
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -53,9 +57,14 @@ class CollectWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         step("calls") { CallLogCollector(ctx, prefs).collect(save) }
         step("sms") { SmsCollector(ctx, prefs).collect(save) }
 
-        prefs.lastCollectMs = now
+        prefs.collectProgress = ""
+        prefs.lastCollectMs = System.currentTimeMillis()
         prefs.lastCollectSummary = results.joinToString(" · ")
         if (newlyStored > 0) Scheduler.requestSync(ctx)
         return Result.success()
+    }
+
+    companion object {
+        private const val STEP_TIMEOUT_MS = 90_000L
     }
 }

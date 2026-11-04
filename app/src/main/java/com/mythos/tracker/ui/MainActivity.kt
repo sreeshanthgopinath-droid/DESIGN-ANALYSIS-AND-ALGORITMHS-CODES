@@ -129,9 +129,11 @@ private fun HomeTab() {
             if (prefs.lastCollectMs >= collectStarted) {
                 collecting = false
                 message = "Collection finished. ${prefs.lastCollectSummary}"
-            } else if (System.currentTimeMillis() - collectStarted > 180_000) {
+            } else if (System.currentTimeMillis() - collectStarted > 600_000) {
                 collecting = false
-                message = "Collection did not finish. Check the permissions below and set battery to Unrestricted."
+                message = "Collection did not finish. Tap Collect now again."
+            } else if (prefs.collectProgress.isNotBlank()) {
+                message = prefs.collectProgress
             }
         }
     }
@@ -217,6 +219,14 @@ private fun HomeTab() {
         HorizontalDivider()
 
         Text("Permissions", style = MaterialTheme.typography.titleMedium)
+        if (!status.sms || !status.usage || !status.notificationAccess) {
+            Text(
+                "If Allow does nothing or says \"Restricted setting\": tap Open settings, then ⋮ (top right) → " +
+                    "Allow restricted settings, confirm, come back and tap Allow again.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
         PermissionRow("Location", status.location) {
             multiLauncher.launch(Permissions.location)
         }
@@ -265,7 +275,7 @@ private fun HomeTab() {
             message = "Collecting now. This can take up to a minute."
             Scheduler.collectNow(context)
         }) {
-            Text(if (collecting) "Collecting…" else "Collect now")
+            Text(if (collecting) "Collecting… (tap to restart)" else "Collect now")
         }
         OutlinedButton(onClick = {
             message = if (prefs.serverUrl.isBlank()) {

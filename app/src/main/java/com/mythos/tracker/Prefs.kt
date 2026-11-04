@@ -43,6 +43,11 @@ class Prefs(context: Context) {
         get() = sp.getString("last_collect_summary", "") ?: ""
         set(value) = sp.edit().putString("last_collect_summary", value).apply()
 
+    /** What the running collection is doing right now; empty when idle. */
+    var collectProgress: String
+        get() = sp.getString("collect_progress", "") ?: ""
+        set(value) = sp.edit().putString("collect_progress", value).apply()
+
     var lastSyncMs: Long
         get() = sp.getLong("last_sync_ms", 0L)
         set(value) = sp.edit().putLong("last_sync_ms", value).apply()
