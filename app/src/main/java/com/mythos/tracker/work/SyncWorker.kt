@@ -1,0 +1,46 @@
+package com.mythos.tracker.work
+
+import android.content.Context
+import androidx.work.CoroutineWorker
+import androidx.work.WorkerParameters
+import com.mythos.tracker.Prefs
+import com.mythos.tracker.data.TrackerDatabase
+import com.mythos.tracker.net.SyncClient
+
+/**
+ * Uploads unsynced events in batches. Each event is marked synced only after the
+ * server acknowledges its batch, so a dropped connection never loses data.
+ */
+class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+
+    override suspend fun doWork(): Result {
+        val ctx = applicationContext
+        val prefs = Prefs(ctx)
+        if (prefs.serverUrl.isBlank()) return Result.success() // not configured yet
+
+        val dao = TrackerDatabase.get(ctx).events()
+        val client = SyncClient(prefs)
+        var uploaded = 0
+
+        while (true) {
+            val batch = dao.pending(BATCH_SIZE)
+            if (batch.isEmpty()) break
+
+            val result = client.upload(batch)
+            if (result.isFailure) {
+                prefs.lastSyncResult = "Failed: ${result.exceptionOrNull()?.message}"
+                return Result.retry()
+            }
+            dao.markSynced(batch.map { it.id })
+            uploaded += batch.size
+        }
+
+        prefs.lastSyncMs = System.currentTimeMillis()
+        prefs.lastSyncResult = "Uploaded $uploaded event(s)"
+        return Result.success()
+    }
+
+    companion object {
+        private const val BATCH_SIZE = 200
+    }
+}
