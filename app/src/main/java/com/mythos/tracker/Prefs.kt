@@ -24,6 +24,16 @@ class Prefs(context: Context) {
             sp.edit().putString("device_id", it).apply()
         }
 
+    /** Comma-separated app package names whose notifications and now-playing info are recorded. */
+    var notificationPackages: String
+        get() = sp.getString("notif_pkgs", DEFAULT_NOTIFICATION_PACKAGES) ?: DEFAULT_NOTIFICATION_PACKAGES
+        set(value) = sp.edit().putString("notif_pkgs", value).apply()
+
+    /** Comma-separated path fragments; audio files whose path contains one are uploaded. */
+    var recordingFolders: String
+        get() = sp.getString("rec_folders", DEFAULT_RECORDING_FOLDERS) ?: DEFAULT_RECORDING_FOLDERS
+        set(value) = sp.edit().putString("rec_folders", value).apply()
+
     var lastCollectMs: Long
         get() = sp.getLong("last_collect_ms", 0L)
         set(value) = sp.edit().putLong("last_collect_ms", value).apply()
@@ -49,4 +59,11 @@ class Prefs(context: Context) {
     var openUsageJson: String
         get() = sp.getString("open_usage", "{}") ?: "{}"
         set(value) = sp.edit().putString("open_usage", value).apply()
+
+    companion object {
+        const val DEFAULT_NOTIFICATION_PACKAGES =
+            "com.google.android.youtube,com.google.android.apps.youtube.music,com.phonepe.app," +
+                "com.google.android.apps.nbu.paisa.user,com.android.chrome,com.google.android.keep"
+        const val DEFAULT_RECORDING_FOLDERS = "Recordings,Call,Essential,Voice"
+    }
 }

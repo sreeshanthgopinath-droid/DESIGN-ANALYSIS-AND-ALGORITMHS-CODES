@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.mythos.tracker.Prefs
+import com.mythos.tracker.collect.CallLogCollector
 import com.mythos.tracker.collect.LocationCollector
 import com.mythos.tracker.collect.MediaCollector
+import com.mythos.tracker.collect.SmsCollector
 import com.mythos.tracker.collect.UsageCollector
 import com.mythos.tracker.data.EventEntity
 import com.mythos.tracker.data.TrackerDatabase
@@ -48,6 +50,8 @@ class CollectWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             if (event != null) 1 else 0
         }
         step("media") { MediaCollector(ctx, prefs).collect(save) }
+        step("calls") { CallLogCollector(ctx, prefs).collect(save) }
+        step("sms") { SmsCollector(ctx, prefs).collect(save) }
 
         prefs.lastCollectMs = now
         prefs.lastCollectSummary = results.joinToString(" · ")

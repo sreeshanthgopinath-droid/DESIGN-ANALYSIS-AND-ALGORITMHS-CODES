@@ -18,6 +18,9 @@ interface EventDao {
     @Query("UPDATE events SET synced = 1 WHERE id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)
 
+    @Query("SELECT * FROM events WHERE kind = 'diary' ORDER BY occurred_at_ms DESC LIMIT 30")
+    fun recentDiary(): Flow<List<EventEntity>>
+
     @Query("SELECT COUNT(*) FROM events WHERE synced = 0")
     fun pendingCount(): Flow<Int>
 }

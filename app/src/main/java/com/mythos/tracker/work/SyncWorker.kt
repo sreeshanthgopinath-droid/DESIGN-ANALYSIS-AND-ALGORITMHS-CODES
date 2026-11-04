@@ -5,6 +5,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.mythos.tracker.Prefs
 import com.mythos.tracker.data.TrackerDatabase
+import com.mythos.tracker.net.RecordingUploader
 import com.mythos.tracker.net.SyncClient
 
 /**
@@ -35,8 +36,17 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             uploaded += batch.size
         }
 
+        var recordings = 0
+        try {
+            recordings = RecordingUploader(ctx, prefs).uploadPending()
+        } catch (e: Exception) {
+            prefs.lastSyncResult = "Events uploaded ($uploaded); recording upload failed: ${e.message}"
+            prefs.lastSyncMs = System.currentTimeMillis()
+            return Result.retry()
+        }
+
         prefs.lastSyncMs = System.currentTimeMillis()
-        prefs.lastSyncResult = "Uploaded $uploaded event(s)"
+        prefs.lastSyncResult = "Uploaded $uploaded event(s)" + if (recordings > 0) " and $recordings recording(s)" else ""
         return Result.success()
     }
 

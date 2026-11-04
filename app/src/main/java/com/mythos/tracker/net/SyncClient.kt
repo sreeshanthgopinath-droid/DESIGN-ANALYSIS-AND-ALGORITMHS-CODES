@@ -10,7 +10,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Sends one batch to the laptop memory server.
+ * Sends one batch to the Mythos cloud server.
  *
  * POST {serverUrl}/api/events
  * Authorization: Bearer {token}
@@ -49,6 +49,24 @@ class SyncClient(private val prefs: Prefs) {
                 conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
                 val code = conn.responseCode
                 if (code !in 200..299) error("server responded HTTP $code")
+            } finally {
+                conn.disconnect()
+            }
+        }
+    }
+
+    /** GET {serverUrl}/api/status, used by the Sources tab. Returns the raw JSON text. */
+    suspend fun status(): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            val conn = (URL("${prefs.serverUrl}/api/status").openConnection() as HttpURLConnection).apply {
+                connectTimeout = 15_000
+                readTimeout = 30_000
+                setRequestProperty("Authorization", "Bearer ${prefs.token}")
+            }
+            try {
+                val code = conn.responseCode
+                if (code !in 200..299) error("server responded HTTP $code")
+                conn.inputStream.bufferedReader().use { it.readText() }
             } finally {
                 conn.disconnect()
             }
