@@ -17,6 +17,20 @@ android {
         versionName = "0.1.0"
     }
 
+    // On the cloud build the debug key comes from a saved keystore, so every build is signed
+    // with the same key and installs over the previous one without uninstalling.
+    signingConfigs {
+        System.getenv("MYTHOS_KEYSTORE")?.let { path ->
+            getByName("debug") {
+                storeFile = file(path)
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+                storeType = "pkcs12"
+            }
+        }
+    }
+
     buildFeatures {
         compose = true
     }

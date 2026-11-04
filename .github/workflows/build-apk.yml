@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  MYTHOS_KEYSTORE: /home/runner/mythos-debug.keystore
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,13 +23,27 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.14.3'
-      # Keeps the same signing key between builds so a new build installs over the old one.
-      # Stored in GitHub's private build cache, not in the repository.
-      - name: Reuse signing key
+
+      # One signing key is kept in GitHub's private build cache (not in the repository),
+      # so every build is signed the same way and installs over the previous one.
+      - name: Restore signing key
         uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: mythos-debug-keystore-v1
+          path: /home/runner/mythos-debug.keystore
+          key: mythos-debug-keystore-v2
+      - name: Create signing key if missing
+        run: |
+          if [ ! -f "$MYTHOS_KEYSTORE" ]; then
+            echo "No saved key found, creating one."
+            keytool -genkeypair -keystore "$MYTHOS_KEYSTORE" -storetype PKCS12 \
+              -storepass android -keypass android -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Mythos Tracker Debug,O=Personal,C=IN"
+          else
+            echo "Using the saved key."
+          fi
+          keytool -list -keystore "$MYTHOS_KEYSTORE" -storepass android | grep -i "fingerprint"
+
       - name: Build
         run: |
           set -o pipefail
@@ -37,6 +54,7 @@ jobs:
           mkdir out
           cp build.log out/ || true
           cp app/build/outputs/apk/debug/app-debug.apk out/MythosTracker.apk || true
+          keytool -exportcert -alias androiddebugkey -keystore "$MYTHOS_KEYSTORE" -storepass android -file out/signing-cert.der || true
           cd out && git init -q -b mythos-tracker-apk && git add .
           git -c user.name=ci -c user.email=ci@example.com commit -qm "build output"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" mythos-tracker-apk
