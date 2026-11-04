@@ -1,6 +1,7 @@
 package com.mythos.tracker.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -34,11 +35,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -95,8 +96,7 @@ private fun HomeTab() {
     val dao = remember { TrackerDatabase.get(context).events() }
     val pending by dao.pendingCount().collectAsState(initial = 0)
 
-    // Re-read permission state every time the app returns to the foreground
-    // (the user may have just changed it in system settings).
+    // Re-read permission state every time the app returns to the foreground.
     var tick by remember { mutableIntStateOf(0) }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -106,7 +106,7 @@ private fun HomeTab() {
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    // While the screen is open, refresh every 2 seconds so "last collection" and results update live.
+    // Refresh every 2 seconds so results appear while the screen is open.
     LaunchedEffect(Unit) {
         while (true) {
             delay(2_000)
@@ -119,6 +119,22 @@ private fun HomeTab() {
     var token by remember { mutableStateOf(prefs.token) }
     var notifPackages by remember { mutableStateOf(prefs.notificationPackages) }
     var recFolders by remember { mutableStateOf(prefs.recordingFolders) }
+    var message by remember { mutableStateOf("") }
+    var collecting by remember { mutableStateOf(false) }
+    var collectStarted by remember { mutableLongStateOf(0L) }
+
+    // Finish the "Collecting…" state when the background run has written its result.
+    LaunchedEffect(tick) {
+        if (collecting) {
+            if (prefs.lastCollectMs >= collectStarted) {
+                collecting = false
+                message = "Collection finished. ${prefs.lastCollectSummary}"
+            } else if (System.currentTimeMillis() - collectStarted > 180_000) {
+                collecting = false
+                message = "Collection did not finish. Check the permissions below and set battery to Unrestricted."
+            }
+        }
+    }
 
     val multiLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -141,6 +157,10 @@ private fun HomeTab() {
         if (prefs.lastCollectSummary.isNotBlank()) Text("Found: ${prefs.lastCollectSummary}")
         Text("Last sync: ${formatTime(prefs.lastSyncMs)}")
         if (prefs.lastSyncResult.isNotBlank()) Text(prefs.lastSyncResult)
+
+        if (message.isNotBlank()) {
+            Text(message, style = MaterialTheme.typography.bodyLarge)
+        }
 
         HorizontalDivider()
 
@@ -174,11 +194,22 @@ private fun HomeTab() {
             modifier = Modifier.fillMaxWidth(),
         )
         Button(onClick = {
-            prefs.serverUrl = serverUrl
-            prefs.token = token
-            prefs.notificationPackages = notifPackages
-            prefs.recordingFolders = recFolders
-            Scheduler.requestSync(context)
+            val url = serverUrl.trim().trimEnd('/')
+            when {
+                !(url.startsWith("https://") || url.startsWith("http://")) ->
+                    message = "Server URL must start with https:// . Paste the full address from the deploy step."
+                token.isBlank() ->
+                    message = "Enter the access token from the deploy step."
+                else -> {
+                    prefs.serverUrl = url
+                    prefs.token = token.trim()
+                    prefs.notificationPackages = notifPackages.trim()
+                    prefs.recordingFolders = recFolders.trim()
+                    serverUrl = url
+                    Scheduler.requestSync(context)
+                    message = "Saved. Sending any pending data to the server now."
+                }
+            }
         }) {
             Text("Save and sync")
         }
@@ -206,14 +237,14 @@ private fun HomeTab() {
         PermissionRow("Bank and UPI messages (SMS)", status.sms) {
             multiLauncher.launch(Permissions.sms)
         }
-        PermissionRow("App usage access (opens system settings)", status.usage) {
+        PermissionRow("App usage access", status.usage) {
             context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
         }
-        PermissionRow("Notification access: YouTube, PhonePe, Essential Space (opens settings)", status.notificationAccess) {
+        PermissionRow("Notification access: YouTube, PhonePe, Essential Space", status.notificationAccess) {
             context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
         if (Build.VERSION.SDK_INT >= 33) {
-            PermissionRow("Show the nightly diary reminder", status.postNotifications) {
+            PermissionRow("Nightly diary reminder (notifications)", status.postNotifications) {
                 singleLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
@@ -228,14 +259,26 @@ private fun HomeTab() {
 
         HorizontalDivider()
 
-        Button(onClick = { Scheduler.collectNow(context) }) {
-            Text("Collect now")
+        Button(onClick = {
+            collecting = true
+            collectStarted = System.currentTimeMillis()
+            message = "Collecting now. This can take up to a minute."
+            Scheduler.collectNow(context)
+        }) {
+            Text(if (collecting) "Collecting…" else "Collect now")
         }
-        OutlinedButton(onClick = { Scheduler.requestSync(context) }) {
+        OutlinedButton(onClick = {
+            message = if (prefs.serverUrl.isBlank()) {
+                "No server yet. Fill in the Server URL and token above, then tap Save and sync."
+            } else {
+                "Sync started."
+            }
+            Scheduler.requestSync(context)
+        }) {
             Text("Sync now")
         }
         Text(
-            "Tip: in Essential Space or any app, use Share, then choose \"Save to Mythos\" to send a note or file here.",
+            "To send a note or file to Mythos from another app, use Share and choose \"Save to Mythos\".",
             style = MaterialTheme.typography.bodySmall,
         )
     }
@@ -248,6 +291,7 @@ private fun DiaryTab() {
     val entries by dao.recentDiary().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     var text by remember { mutableStateOf("") }
+    var saved by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -279,9 +323,11 @@ private fun DiaryTab() {
                     )
                     Scheduler.requestSync(context)
                     text = ""
+                    saved = "Entry saved."
                 }
             },
         ) { Text("Save entry") }
+        if (saved.isNotBlank()) Text(saved)
 
         HorizontalDivider()
         Text("Recent entries", style = MaterialTheme.typography.titleMedium)
@@ -304,9 +350,9 @@ private fun SourcesTab() {
 
     LaunchedEffect(reload) {
         message = "Loading…"
+        rows = emptyList()
         if (prefs.serverUrl.isBlank()) {
-            message = "Enter the server URL and token on the Home tab first."
-            rows = emptyList()
+            message = "No server yet. Enter the server URL and token on the Home tab first."
             return@LaunchedEffect
         }
         val result = SyncClient(prefs).status()
@@ -319,15 +365,13 @@ private fun SourcesTab() {
                 "${s.getString("source")}: ${s.getString("state")} · ${s.getInt("count")} items" +
                     if (last > 0) " · last ${formatTime(last)}" else ""
             }
-            val google = when {
+            message = when {
                 !json.optBoolean("google_configured") -> "Google pickup: not configured on the server"
                 json.optBoolean("google_connected") -> "Google pickup: connected"
                 else -> "Google pickup: not connected (open the server page in a browser)"
             }
-            message = google
         }.onFailure {
             message = "Could not reach the server: ${it.message}"
-            rows = emptyList()
         }
     }
 
@@ -347,16 +391,24 @@ private fun SourcesTab() {
 
 @Composable
 private fun PermissionRow(label: String, granted: Boolean, onRequest: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(if (granted) "✓ $label" else label, modifier = Modifier.weight(1f))
+    val context = LocalContext.current
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(if (granted) "✓ $label" else label)
         if (!granted) {
-            TextButton(onClick = onRequest) { Text("Allow") }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onRequest) { Text("Allow") }
+                // Android ignores "Allow" once a permission was refused twice; this always works.
+                TextButton(onClick = { openAppSettings(context) }) { Text("Open settings") }
+            }
         }
     }
+}
+
+private fun openAppSettings(context: Context) {
+    context.startActivity(
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+    )
 }
 
 private fun formatTime(ms: Long): String =

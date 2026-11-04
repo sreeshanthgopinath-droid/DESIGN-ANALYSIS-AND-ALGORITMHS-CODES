@@ -17,7 +17,10 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     override suspend fun doWork(): Result {
         val ctx = applicationContext
         val prefs = Prefs(ctx)
-        if (prefs.serverUrl.isBlank()) return Result.success() // not configured yet
+        if (prefs.serverUrl.isBlank() || prefs.token.isBlank()) {
+            prefs.lastSyncResult = "Not synced: enter the server URL and access token on the Home tab"
+            return Result.success() // not configured yet; data stays queued on the phone
+        }
 
         val dao = TrackerDatabase.get(ctx).events()
         val client = SyncClient(prefs)
