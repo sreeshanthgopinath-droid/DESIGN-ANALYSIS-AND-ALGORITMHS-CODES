@@ -25,7 +25,6 @@ import com.phonecapture.tracker.core.model.CaptureCategory
 import com.phonecapture.tracker.core.model.FailureReason
 import java.io.ByteArrayOutputStream
 import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -228,19 +227,8 @@ abstract class CameraCaptureController(
         appContext.getSystemService(DisplayManager::class.java)?.getDisplay(Display.DEFAULT_DISPLAY)?.rotation
             ?: Surface.ROTATION_0
 
-    private suspend fun cameraProvider(): ProcessCameraProvider = suspendCancellableCoroutine { cont ->
-        val future = ProcessCameraProvider.getInstance(appContext)
-        future.addListener(
-            {
-                try {
-                    cont.resume(future.get())
-                } catch (e: Exception) {
-                    cont.resumeWithException(e.cause ?: e)
-                }
-            },
-            ContextCompat.getMainExecutor(appContext),
-        )
-    }
+    /** CameraX's suspend API: avoids handling Guava's ListenableFuture directly. */
+    private suspend fun cameraProvider(): ProcessCameraProvider = ProcessCameraProvider.awaitInstance(appContext)
 
     companion object {
         const val DEFAULT_TIMEOUT_MILLIS = 20_000L

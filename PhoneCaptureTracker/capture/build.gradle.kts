@@ -71,8 +71,6 @@ dependencies {
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
-    // ProcessCameraProvider.getInstance() and WorkManager's setProgressAsync() return Guava's ListenableFuture.
-    implementation(libs.guava.listenablefuture)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

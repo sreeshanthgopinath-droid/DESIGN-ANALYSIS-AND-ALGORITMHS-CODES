@@ -11,7 +11,6 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import androidx.work.workDataOf
 import com.phonecapture.tracker.capture.CaptureGraph
 import com.phonecapture.tracker.capture.data.db.CaptureRecordEntity
 import com.phonecapture.tracker.capture.data.settings.CaptureSettings
@@ -92,10 +91,8 @@ class UploadWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
                     if (isStopped) break@batches
                     val remaining = dao.pendingUploadCount()
                     graph.uploadProgress.set(UploadProgress(record.captureId, 0, remaining))
-                    setProgress(workDataOf(KEY_CAPTURE_ID to record.captureId, KEY_PERCENT to 0))
                     val outcome = graph.uploader.upload(record) { percent ->
                         graph.uploadProgress.set(UploadProgress(record.captureId, percent, remaining))
-                        setProgressAsync(workDataOf(KEY_CAPTURE_ID to record.captureId, KEY_PERCENT to percent))
                     }
                     val attempts = record.uploadAttempts + 1
                     when (outcome) {
@@ -180,8 +177,6 @@ class UploadWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
     }
 
     companion object {
-        const val KEY_CAPTURE_ID = "captureId"
-        const val KEY_PERCENT = "percent"
         private const val BATCH_SIZE = 10
         val retryPolicy = UploadRetryPolicy()
     }
