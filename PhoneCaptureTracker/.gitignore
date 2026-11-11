@@ -1,0 +1,16 @@
+*.iml
+.gradle/
+.kotlin/
+/local.properties
+/.idea/
+.DS_Store
+build/
+/captures
+.externalNativeBuild
+.cxx
+
+# Secrets – never commit these
+app/google-services.json
+keystore.properties
+*.jks
+*.keystore
