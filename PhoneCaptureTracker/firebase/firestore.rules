@@ -1,0 +1,50 @@
+rules_version = '2';
+
+// Firestore rules for PhoneCaptureTracker.
+// users/{uid}/captures/{captureId}  – metadata only (no image data), owner-only.
+// users/{uid}/vault/keyring         – recovery keyring (no plaintext keys), owner-only.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function validCapture(uid, captureId) {
+      let d = request.resource.data;
+      return d.keys().hasOnly([
+          'captureId', 'category', 'capturedAtUtc', 'slotStartUtc', 'storagePath', 'sizeBytes',
+          'ciphertextSha256', 'keyId', 'encryption', 'widthPx', 'heightPx', 'uploadedAt'])
+        && d.captureId == captureId
+        && d.category in ['FRONT', 'REAR', 'SCREENSHOT']
+        && d.capturedAtUtc is int
+        && d.sizeBytes is int && d.sizeBytes > 0
+        && d.storagePath is string
+        && d.storagePath.matches('PhoneCaptureTracker/' + uid + '/.*[.]jpg[.]enc')
+        && d.encryption == 'AES-256-GCM/PCTE1';
+    }
+
+    function validKeyring() {
+      let d = request.resource.data;
+      return d.version == '1'
+        && d.kdf == 'PBKDF2WithHmacSHA256'
+        && d.salt is string
+        && d.currentKeyId is string
+        && d.size() < 220;
+    }
+
+    match /users/{uid}/captures/{captureId} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validCapture(uid, captureId);
+    }
+
+    match /users/{uid}/vault/{docId} {
+      allow read, delete: if isOwner(uid) && docId == 'keyring';
+      allow create, update: if isOwner(uid) && docId == 'keyring' && validKeyring();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

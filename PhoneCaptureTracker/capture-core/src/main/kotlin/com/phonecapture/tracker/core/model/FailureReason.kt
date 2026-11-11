@@ -79,4 +79,5 @@ enum class DiagnosticType(val label: String, val severity: Severity) {
     PROJECTION_STARTED("Screen sharing started", Severity.INFO),
     UPLOAD_VERIFIED("Upload verified", Severity.INFO),
     DATA_DELETED("Data deleted", Severity.INFO),
+    DATA_EXPORTED("Unencrypted copy exported", Severity.INFO),
 }

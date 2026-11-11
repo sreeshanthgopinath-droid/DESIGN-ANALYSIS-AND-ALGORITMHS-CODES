@@ -35,6 +35,7 @@ class CameraCaptureService : LifecycleService() {
 
     private lateinit var graph: CaptureGraph
     private var timerJob: Job? = null
+    private var inForeground = false
 
     override fun onCreate() {
         super.onCreate()
@@ -51,18 +52,26 @@ class CameraCaptureService : LifecycleService() {
         if (graph.scheduleStore.current.state == ScheduleState.STOPPED) {
             // e.g. a sticky restart after the user had stopped capture. Satisfy the
             // startForegroundService() contract if possible, then leave quietly.
-            runCatching {
-                ServiceCompat.startForeground(
-                    this,
-                    CaptureNotifications.ID_SCHEDULE,
-                    graph.notifications.scheduleNotification(currentNotice()),
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA,
-                )
+            if (!inForeground) {
+                runCatching {
+                    ServiceCompat.startForeground(
+                        this,
+                        CaptureNotifications.ID_SCHEDULE,
+                        graph.notifications.scheduleNotification(currentNotice()),
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA,
+                    )
+                }
             }
             shutDown()
             return START_NOT_STICKY
         }
-        if (!enterForeground()) return START_NOT_STICKY
+        // Promote to the foreground once. Later commands (alarm ticks while the app is in the
+        // background, pause/refresh) only update the notification, so no background re-promotion
+        // of a camera-type service is ever attempted.
+        if (!inForeground) {
+            if (!enterForeground()) return START_NOT_STICKY
+            inForeground = true
+        }
         running.value = true
         graph.notifications.cancelServiceInterrupted()
 
@@ -161,6 +170,7 @@ class CameraCaptureService : LifecycleService() {
         timerJob?.cancel()
         graph.alarms.cancel()
         running.value = false
+        inForeground = false
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }

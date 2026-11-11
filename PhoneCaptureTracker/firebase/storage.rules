@@ -1,0 +1,23 @@
+rules_version = '2';
+
+// Cloud Storage rules for PhoneCaptureTracker.
+// - Only the signed-in owner can read, list, write or delete their own folder.
+// - Uploads must be small encrypted envelopes (*.jpg.enc, application/octet-stream).
+// - Everything else is denied. Files are never public; the app never creates download URLs.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /PhoneCaptureTracker/{uid}/{allPaths=**} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.size > 0
+        && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType == 'application/octet-stream'
+        && request.resource.name.matches('PhoneCaptureTracker/' + uid + '/[0-9]{4}/[0-9]{2}/[0-9]{2}/(Front|Rear|Screenshots)/[^/]+[.]jpg[.]enc');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

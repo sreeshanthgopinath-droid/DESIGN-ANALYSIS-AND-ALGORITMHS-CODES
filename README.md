@@ -18,3 +18,9 @@ C / C++
 
 ## Author
 Sreeshanth Gopinath
+
+## PhoneCaptureTracker (Android app)
+
+The [`PhoneCaptureTracker/`](PhoneCaptureTracker/) folder is a separate Android Studio project (Kotlin, Jetpack Compose):
+a transparent, user-controlled phone-activity capture app whose capture module is designed to plug into Mythos Tracker.
+Start with [`PhoneCaptureTracker/README.md`](PhoneCaptureTracker/README.md).

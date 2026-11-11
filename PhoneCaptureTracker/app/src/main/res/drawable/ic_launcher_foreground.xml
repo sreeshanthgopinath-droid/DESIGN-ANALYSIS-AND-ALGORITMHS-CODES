@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon foreground (108dp canvas, artwork inside the central 72dp safe zone):
+     a camera lens with a red recording dot. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M40,36h28l4,6h6c2.2,0 4,1.8 4,4v24c0,2.2 -1.8,4 -4,4H30c-2.2,0 -4,-1.8 -4,-4V46c0,-2.2 1.8,-4 4,-4h6zM54,47a11,11 0,1 0,0 22a11,11 0,1 0,0 -22z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M54,52a6,6 0,1 0,0 12a6,6 0,1 0,0 -12z" />
+    <path
+        android:fillColor="#FFD71921"
+        android:pathData="M74,48a3,3 0,1 0,0 6a3,3 0,1 0,0 -6z" />
+</vector>

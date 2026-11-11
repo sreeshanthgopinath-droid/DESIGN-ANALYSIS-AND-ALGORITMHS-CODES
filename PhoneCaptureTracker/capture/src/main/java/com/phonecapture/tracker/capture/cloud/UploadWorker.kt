@@ -65,6 +65,7 @@ class UploadWorker(appContext: Context, params: WorkerParameters) : CoroutineWor
             )
             return Result.success()
         }
+        if (graph.vault.localKeyring() == null) return Result.success() // no key yet, so nothing was captured
         // Images may only be uploaded once the cloud can be used to recover their key.
         when (val keyring = graph.dataManager.syncKeyring()) {
             KeyringSync.InSync -> Unit
