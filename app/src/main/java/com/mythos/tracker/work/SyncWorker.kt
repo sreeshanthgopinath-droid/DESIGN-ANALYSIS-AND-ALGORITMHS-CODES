@@ -5,7 +5,6 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.mythos.tracker.Prefs
 import com.mythos.tracker.data.TrackerDatabase
-import com.mythos.tracker.net.RecordingUploader
 import com.mythos.tracker.net.SyncClient
 
 /**
@@ -18,7 +17,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val ctx = applicationContext
         val prefs = Prefs(ctx)
         if (prefs.serverUrl.isBlank() || prefs.token.isBlank()) {
-            prefs.lastSyncResult = "Not synced: enter the server URL and access token on the Home tab"
+            prefs.lastSyncResult = "No backup server set (optional)"
             return Result.success() // not configured yet; data stays queued on the phone
         }
 
@@ -39,17 +38,8 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             uploaded += batch.size
         }
 
-        var recordings = 0
-        try {
-            recordings = RecordingUploader(ctx, prefs).uploadPending()
-        } catch (e: Exception) {
-            prefs.lastSyncResult = "Events uploaded ($uploaded); recording upload failed: ${e.message}"
-            prefs.lastSyncMs = System.currentTimeMillis()
-            return Result.retry()
-        }
-
         prefs.lastSyncMs = System.currentTimeMillis()
-        prefs.lastSyncResult = "Uploaded $uploaded event(s)" + if (recordings > 0) " and $recordings recording(s)" else ""
+        prefs.lastSyncResult = "Uploaded $uploaded event(s)"
         return Result.success()
     }
 

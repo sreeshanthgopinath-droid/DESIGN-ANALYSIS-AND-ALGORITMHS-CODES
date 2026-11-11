@@ -3,10 +3,7 @@ package com.mythos.tracker
 import android.content.Context
 import java.util.UUID
 
-/**
- * Small key-value store for settings, sync status and collector watermarks.
- * The access token is kept in plain SharedPreferences (app-private storage).
- */
+/** Small key-value store for settings, sync status and collector watermarks. */
 class Prefs(context: Context) {
     private val sp = context.applicationContext
         .getSharedPreferences("mythos_tracker", Context.MODE_PRIVATE)
@@ -24,29 +21,32 @@ class Prefs(context: Context) {
             sp.edit().putString("device_id", it).apply()
         }
 
-    /** Comma-separated app package names whose notifications and now-playing info are recorded. */
-    var notificationPackages: String
-        get() = sp.getString("notif_pkgs", DEFAULT_NOTIFICATION_PACKAGES) ?: DEFAULT_NOTIFICATION_PACKAGES
-        set(value) = sp.edit().putString("notif_pkgs", value).apply()
+    /** Payment apps whose notifications are read for amount and payee. */
+    var paymentApps: String
+        get() = sp.getString("payment_apps", DEFAULT_PAYMENT_APPS) ?: DEFAULT_PAYMENT_APPS
+        set(value) = sp.edit().putString("payment_apps", value).apply()
 
-    /** Comma-separated path fragments; audio files whose path contains one are uploaded. */
-    var recordingFolders: String
-        get() = sp.getString("rec_folders", DEFAULT_RECORDING_FOLDERS) ?: DEFAULT_RECORDING_FOLDERS
-        set(value) = sp.edit().putString("rec_folders", value).apply()
+    /** Apps whose currently playing video or song is recorded. */
+    var mediaApps: String
+        get() = sp.getString("media_apps", DEFAULT_MEDIA_APPS) ?: DEFAULT_MEDIA_APPS
+        set(value) = sp.edit().putString("media_apps", value).apply()
 
     var lastCollectMs: Long
         get() = sp.getLong("last_collect_ms", 0L)
         set(value) = sp.edit().putLong("last_collect_ms", value).apply()
 
-    /** One line per collection run, e.g. "apps 12 · location 1 · media 340" or a failure reason. */
     var lastCollectSummary: String
         get() = sp.getString("last_collect_summary", "") ?: ""
         set(value) = sp.edit().putString("last_collect_summary", value).apply()
 
-    /** What the running collection is doing right now; empty when idle. */
     var collectProgress: String
         get() = sp.getString("collect_progress", "") ?: ""
         set(value) = sp.edit().putString("collect_progress", value).apply()
+
+    /** Time of the most recent location fix from the always-on location tracker. */
+    var lastLocationMs: Long
+        get() = sp.getLong("last_location_ms", 0L)
+        set(value) = sp.edit().putLong("last_location_ms", value).apply()
 
     var lastSyncMs: Long
         get() = sp.getLong("last_sync_ms", 0L)
@@ -56,19 +56,17 @@ class Prefs(context: Context) {
         get() = sp.getString("last_sync_result", "") ?: ""
         set(value) = sp.edit().putString("last_sync_result", value).apply()
 
-    /** Per-collector high-water marks (timestamps already read from the device). */
     fun watermark(name: String): Long = sp.getLong("wm_$name", 0L)
     fun setWatermark(name: String, value: Long) = sp.edit().putLong("wm_$name", value).apply()
 
-    /** App sessions that were foregrounded but not yet backgrounded, stored as JSON {package: startMs}. */
     var openUsageJson: String
         get() = sp.getString("open_usage", "{}") ?: "{}"
         set(value) = sp.edit().putString("open_usage", value).apply()
 
     companion object {
-        const val DEFAULT_NOTIFICATION_PACKAGES =
-            "com.google.android.youtube,com.google.android.apps.youtube.music,com.phonepe.app," +
-                "com.google.android.apps.nbu.paisa.user,com.android.chrome,com.google.android.keep"
-        const val DEFAULT_RECORDING_FOLDERS = "Recordings,Call,Essential,Voice"
+        const val DEFAULT_PAYMENT_APPS =
+            "com.phonepe.app,com.google.android.apps.nbu.paisa.user,net.one97.paytm,in.org.npci.upiapp"
+        const val DEFAULT_MEDIA_APPS =
+            "com.google.android.youtube,com.google.android.apps.youtube.music"
     }
 }

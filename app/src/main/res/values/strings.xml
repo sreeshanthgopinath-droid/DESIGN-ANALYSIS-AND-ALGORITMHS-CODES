@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="web_capture_description">Records the websites you open in Chrome and what you search in Chrome, the Google app and YouTube, with the time. It reads only the address bar and search boxes of those three apps, never page contents, messages or passwords. Everything stays on your phone.</string>
+</resources>

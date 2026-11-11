@@ -9,7 +9,6 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
 /**
@@ -41,23 +40,7 @@ object Scheduler {
                 .setConstraints(networkConstraint)
                 .build(),
         )
-        scheduleDiaryReminder(wm)
-    }
-
-    /** Nightly reminder at 21:00 local time to write the diary. */
-    private fun scheduleDiaryReminder(wm: WorkManager) {
-        val now = Calendar.getInstance()
-        val next = (now.clone() as Calendar).apply {
-            set(Calendar.HOUR_OF_DAY, 21); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0)
-            if (before(now)) add(Calendar.DAY_OF_YEAR, 1)
-        }
-        wm.enqueueUniquePeriodicWork(
-            DIARY_REMINDER,
-            ExistingPeriodicWorkPolicy.KEEP,
-            PeriodicWorkRequestBuilder<DiaryReminderWorker>(1, TimeUnit.DAYS)
-                .setInitialDelay(next.timeInMillis - now.timeInMillis, TimeUnit.MILLISECONDS)
-                .build(),
-        )
+        wm.cancelUniqueWork(DIARY_REMINDER) // removed feature
     }
 
     fun collectNow(context: Context) {
