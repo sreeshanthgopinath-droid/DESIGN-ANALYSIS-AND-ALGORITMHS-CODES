@@ -13,8 +13,8 @@ android {
         applicationId = "com.mythos.tracker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.3.0"
+        versionCode = 5
+        versionName = "0.4.0"
     }
 
     // On the cloud build the debug key comes from a saved keystore, so every build is signed
@@ -62,6 +62,7 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
 
     implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 }
