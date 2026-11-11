@@ -71,6 +71,10 @@ dependencies {
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
+    // Full Guava (Android flavour) provides com.google.common.util.concurrent.ListenableFuture, which
+    // ProcessCameraProvider.getInstance() returns. The standalone listenablefuture artifact is not enough:
+    // Gradle resolves it to an empty placeholder version that contains no classes.
+    implementation(libs.guava)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
