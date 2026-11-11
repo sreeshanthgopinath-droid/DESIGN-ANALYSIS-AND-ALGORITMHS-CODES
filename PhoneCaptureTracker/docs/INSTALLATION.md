@@ -1,5 +1,13 @@
 # Installing on the Nothing Phone (3a) — Android 16
 
+## 0. Get a ready-built debug APK (no computer setup needed)
+
+1. Open the GitHub Actions run for the latest build: <https://github.com/sreeshanthgopinath-droid/DESIGN-ANALYSIS-AND-ALGORITMHS-CODES/actions/runs/43062590987> (or the **Actions → Debug APK** page of the repository).
+2. Scroll to **Artifacts** and download **PhoneCaptureTracker-debug-apk** (a zip, about 16 MB). GitHub requires you to be signed in to download it.
+3. Unzip it and copy `app-debug.apk` to the phone (USB, Google Drive, or any file transfer). On the phone, open the file in **Files**, allow **Install unknown apps** for the app you opened it from when asked, then tap **Install**. Then continue with section 4 below.
+
+The APK is signed with the debug key, which is fine for personal use and testing. Build a signed release APK for anything wider ([RELEASE_SIGNING.md](RELEASE_SIGNING.md)).
+
 ## 1. Build the debug APK on your computer
 
 1. Install **Android Studio** (Narwhal 2025.1 or newer). In *SDK Manager*, install **Android SDK Platform 36** and the latest **Build-Tools**.

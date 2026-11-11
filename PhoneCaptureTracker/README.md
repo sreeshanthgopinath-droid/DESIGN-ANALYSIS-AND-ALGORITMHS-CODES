@@ -20,9 +20,9 @@ The capture features live in a reusable Android library (`:capture`), so they ca
 |---|---|
 | `:capture-core` (scheduler, AES-256-GCM envelope, recovery keyring, retention/upload/storage policies, summaries) | **Compiled and unit-tested in the development container: 41/41 JVM tests pass** (Kotlin 2.2.21, JDK 21) |
 | All 85 Kotlin/KTS files | **Parsed with the Kotlin 2.2.21 compiler front-end: 0 syntax errors** |
-| `:capture` and `:app` Android modules | **Not compiled yet.** The development container had no network access to `dl.google.com` / `maven.google.com`, so the Android SDK, AGP, AndroidX and Firebase could not be downloaded. Run `./gradlew assembleDebug` on your PC (see below); please report any compile error and it will be fixed. |
-| `./gradlew lint`, Android unit tests, instrumented tests | **Not run** (same reason) |
-| Debug APK | **Not produced yet** (same reason) |
+| `:capture` and `:app` Android modules | **Compiled: `./gradlew :app:assembleDebug` succeeds on GitHub Actions** (run [43062590987](https://github.com/sreeshanthgopinath-droid/DESIGN-ANALYSIS-AND-ALGORITMHS-CODES/actions/runs/43062590987), commit `af06d80`). The development container cannot reach Google's Android repositories, so CI is the build environment. |
+| Debug APK | **Built by CI**: artifact `PhoneCaptureTracker-debug-apk` on the run above. Download instructions: [docs/INSTALLATION.md](docs/INSTALLATION.md). |
+| `./gradlew lint`, Android unit tests, instrumented tests | **Not run yet** |
 | Emulator tests | **Not run** |
 | Physical Nothing Phone (3a) tests | **Not run.** Use [docs/DEVICE_TESTING_GUIDE.md](docs/DEVICE_TESTING_GUIDE.md) and record results in [docs/DEVICE_TEST_REPORT.md](docs/DEVICE_TEST_REPORT.md). |
 
